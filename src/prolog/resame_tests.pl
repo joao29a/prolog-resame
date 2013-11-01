@@ -1,6 +1,10 @@
 % vim: set ft=prolog:
 
-:- use_module(plunit).
+% Usa o arquivo plunit.pl se é uma versão é < 6.0
+:- current_prolog_flag(version, V), V < 60000, use_module(plunit) ; true.
+% Usa o arquivo plunit.pl que vem com o Prolog se a versão é > 6.0.0
+:- current_prolog_flag(version, V), V > 60000, use_module(library(plunit)) ; true.
+
 :- consult(resame).
 
 :- begin_tests(resame).
