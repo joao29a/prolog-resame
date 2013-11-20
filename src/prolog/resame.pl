@@ -36,7 +36,9 @@
 %  ou sem-solucao se o jogo não tem solução.
 
 main(File) :-
-    writeln(File), fail.
+    read_matrix_file(File, M),
+    transpose(M, Same),
+    solve(Same, Moves).
 
 %% solve(+Same, -Moves) is nondet
 %
@@ -44,12 +46,13 @@ main(File) :-
 %  quando realizadas ("clicadas") resolvem o jogo Same.
 %  Este predicado não tem teste de unidade. Ele é testado pelo testador.
 
+
 solve([], []).
 solve(Same, [M|Moves]) :-
-    group(Same, Group),
-    remove_group(Same, Group, NewSame),
-    [M|_] = Group,
-    solve(NewSame, Moves).
+    group(Same, Group).
+    %remove_group(Same, Group, NewSame),
+    %[M|_] = Group,
+    %solve(NewSame, Moves).
 
 %% group(+Same, ?Group) is nondet
 %
@@ -60,14 +63,41 @@ solve(Same, [M|Moves]) :-
 %  auxiliares.
 
 group(Same, Group) :-
-    writeln([Same, Group]), fail.
+    group(Same, pos(0, 0), Group).
 
 %% grupo(+Same, +P, -Group) is semidet
 %
 %  Verdadeiro se Group é um grupo de Same que contém a posição P.
 
 group(Same, P, Group) :-
-    writeln([Same, P, Group]), fail.
+    get_color(Same, P, Color),
+    create_group(Same, P, Color, Group).
+
+get_color(Same, P, Color) :-
+    pos(Lin, Col) = P,
+    nth0(Col, Same, X),
+    nth0(Lin, X, Color).
+
+create_group(Same, P, Color, Group) :-
+    is_valid(Same, P),
+    same_color(Same, P, Color).
+
+same_color(Same, P, Color) :-
+    get_color(Same, P, NewColor),
+    NewColor =:= Color.
+
+is_valid(Same, P) :-
+    pos(Lin, Col) = P,
+    get_same_size(Same, ColSize, LineSize),
+    Col >= 0,
+    Col < ColSize,
+    Lin >= 0,
+    Lin < LinSize.
+
+get_same_size(Same, ColSize, LinSize) :-
+    [Lines | _] = Same,
+    length(Lines, LinSize),
+    length(Same, ColSize).
 
 %% remove_group(+Same, +Group, -NewSame) is semidet
 %
