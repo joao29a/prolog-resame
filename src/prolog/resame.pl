@@ -49,7 +49,8 @@ main(File) :-
 
 solve([], []).
 solve(Same, [M|Moves]) :-
-    group(Same, Group).
+    group(Same, Group),
+    writeln(Group).
     %remove_group(Same, Group, NewSame),
     %[M|_] = Group,
     %solve(NewSame, Moves).
@@ -63,7 +64,8 @@ solve(Same, [M|Moves]) :-
 %  auxiliares.
 
 group(Same, Group) :-
-    group(Same, pos(0, 0), Group).
+    get_same_size(Same, ColSize, LinSize),
+    group(Same, pos(1, 2), Group).
 
 %% grupo(+Same, +P, -Group) is semidet
 %
@@ -71,16 +73,37 @@ group(Same, Group) :-
 
 group(Same, P, Group) :-
     get_color(Same, P, Color),
-    create_group(Same, P, Color, Group).
+    Candidates = [P],
+    create_group(Candidates, Same, Color, [], Group).
 
 get_color(Same, P, Color) :-
     pos(Lin, Col) = P,
     nth0(Col, Same, X),
     nth0(Lin, X, Color).
 
-create_group(Same, P, Color, Group) :-
+create_group([], _, _, TempGroup, Group) :-
+    length(TempGroup, X),
+    X > 1, 
+    Group = TempGroup.
+
+create_group([P | Tail], Same, Color, TempGroup, Group) :-
     is_valid(Same, P),
-    same_color(Same, P, Color).
+    same_color(Same, P, Color),
+    not(member(P, TempGroup)),
+    append(TempGroup, [P], NewGroup),
+    get_neighbors(P, Neighbors),
+    append(Tail, Neighbors, Candidates),
+    create_group(Candidates, Same, Color, NewGroup, Group), !;
+    create_group(Tail, Same, Color, TempGroup, Group).
+
+get_neighbors(P, Neighbors) :-
+    pos(Lin, Col) = P,
+    NewLinPlus is Lin + 1,
+    NewColPlus is Col + 1,
+    NewLinMinus is Lin - 1,
+    NewColMinus is Col - 1,
+    Neighbors = [pos(NewLinPlus, Col), pos(Lin, NewColPlus),
+        pos(NewLinMinus, Col), pos(Lin, NewColMinus)].
 
 same_color(Same, P, Color) :-
     get_color(Same, P, NewColor),
@@ -92,7 +115,7 @@ is_valid(Same, P) :-
     Col >= 0,
     Col < ColSize,
     Lin >= 0,
-    Lin < LinSize.
+    Lin < LineSize.
 
 get_same_size(Same, ColSize, LinSize) :-
     [Lines | _] = Same,
