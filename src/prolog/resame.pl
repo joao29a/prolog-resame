@@ -39,7 +39,76 @@ main(File) :-
     read_matrix_file(File, M),
     transpose(M, Same),
     solve(Same, Moves),
-    writeln(Moves).
+    get_lin_col_size(Same, Col, Lin), 
+    print(Moves, Same, Col, Lin), !.
+
+get_lin_col_size(Same, Col, Lin) :-
+    length(Same, Col),
+    [Line | _] = Same,
+    length(Line, Lin).
+
+print([], _, _, _).
+
+print([M|Tail], Same, Col, Lin) :-
+    group(Same, M, Group),
+    remove_group(Same, Group, NewSame),
+    length(NewSame, X),
+    X < Col,
+    Total is Col - X,
+    buildList(Total, Lin, EmptyLine),
+    append(NewSame, EmptyLine, RenewSame),
+    check_lines(RenewSame, Lin, ResultSame),
+    echo_output(M, ResultSame),
+    print(Tail, NewSame, Col, Lin), !.
+
+print([M|Tail], Same, Col, Lin) :-
+    group(Same, M, Group),
+    remove_group(Same, Group, NewSame),
+    length(NewSame, X),
+    X =:= Col,
+    check_lines(NewSame, Lin, RenewSame),
+    echo_output(M, RenewSame),
+    print(Tail, NewSame, Col, Lin).
+
+echo_output(pos(X, Y), Same) :-
+    write(X), put_char(' '),
+    write(Y), writeln('\n'),
+    transpose(Same, NewSame),
+    write_matrix(NewSame),
+    write('\n').
+
+check_lines([Line | Rest], Lin, [NewLine | Rest3]) :-
+    length(Line, X),
+    Total is Lin - X,
+    addZeros(Total, ZeroLine),
+    append(Line, ZeroLine, NewLine),
+    check_lines(Rest, Lin, Rest3).
+check_lines([],_,[]).
+
+addZeros(Total, [P|Rest]) :-
+    Total > 0,
+    P = 0,
+    NewTotal is Total - 1,
+    addZeros(NewTotal, Rest).
+
+addZeros(0, []).
+
+buildList(Total, Lin, [S|T]) :-
+    Total > 0,
+    emptyLine(Lin, List),
+    S = List,
+    NewTotal is Total - 1,
+    buildList(NewTotal, Lin, T).
+
+buildList(0, _, []).
+
+emptyLine(Lin, [S|T]) :-
+    Lin > 0,
+    S = 0,
+    DecLin is Lin - 1,
+    emptyLine(DecLin, T).
+
+emptyLine(0, []).
 
 %% solve(+Same, -Moves) is nondet
 %
@@ -148,41 +217,35 @@ get_same_lin_size(Same, Col, LinSize) :-
 %    - crie um predicado auxiliar remove_column_group, que remove os elementos
 %    de uma coluna específica
 remove_group(Same, Group, NewSame) :-
-    make_new_same(Same, Group, 0, NewSame).
+    remove_column_group(Same, Group, [], NewSame, pos(0,0)), !.
 
-make_new_same(Same, Group, Col, [NewCol | RestCol]) :-
-    length(Same, LengthSame),
-    Col < LengthSame,
-    findall(X, member(pos(X, Col), Group), ListLin),
-    ListLin \= [],
-    nth0(Col, Same, Column),
-    remove_column_group(ListLin, Column, Column, NewColumn),
-    NewColumn \= [],
-    [NewCol | _] = [NewColumn],
-    IncCol is Col + 1,
-    make_new_same(Same, Group, IncCol, RestCol), !.
+remove_column_group(Same, Group, NewColumn, NewSame, pos(Lin,Col)) :-
+    not(member(pos(Lin,Col), Group)),
+    nth0(Col, Same, Line),
+    nth0(Lin, Line, Elem),
+    append(NewColumn, [Elem], NewElemColumn),
+    NewLin is Lin + 1,
+    remove_column_group(Same, Group, NewElemColumn, NewSame, 
+                                pos(NewLin, Col)).
 
-make_new_same(Same, Group, Col, [NewCol | RestCol]) :-
-    length(Same, LengthSame),
-    Col < LengthSame,
-    findall(X, member(pos(X, Col), Group), ListLin),
-    ListLin = [],
-    nth0(Col, Same, Column),
-    [NewCol | _] = [Column],
-    IncCol is Col + 1,
-    make_new_same(Same, Group, IncCol, RestCol), !.
+remove_column_group(Same, Group, NewColumn, NewSame, pos(Lin,Col)) :-
+    nth0(Col, Same, Line),
+    length(Line, SizeLin),
+    Lin < SizeLin,
+    NewLin is Lin + 1,
+    remove_column_group(Same, Group, NewColumn, NewSame, pos(NewLin,Col)).
 
-make_new_same(Same, _, Col, []) :-
+remove_column_group(Same, Group, [], NewSame, pos(_,Col)) :-
     length(Same, X),
-    X =:= Col, !.
+    Col < X,
+    NewCol is Col + 1,
+    remove_column_group(Same, Group, [], NewSame, pos(0, NewCol)).
 
-make_new_same(Same, Group, Col, NewSame) :-
-    IncCol is Col + 1,
-    make_new_same(Same, Group, IncCol, NewSame).
+remove_column_group(Same, Group, NewColumn, [NewColumn | RestColumn], 
+                            pos(_,Col)) :-
+    length(Same, X),
+    Col < X,
+    NewCol is Col + 1,
+    remove_column_group(Same, Group, [], RestColumn, pos(0, NewCol)).
 
-remove_column_group([], _, Column, Column).
-
-remove_column_group([Lin | Tail], SameColumn, Column, FinalColumn) :-
-    nth0(Lin, SameColumn, Elem),
-    selectchk(Elem, Column, NewColumn),
-    remove_column_group(Tail, SameColumn, NewColumn, FinalColumn).
+remove_column_group(_, _, _, [], _).
