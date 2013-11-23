@@ -38,7 +38,8 @@
 main(File) :-
     read_matrix_file(File, M),
     transpose(M, Same),
-    solve(Same, Moves).
+    solve(Same, Moves),
+    writeln(Moves).
 
 %% solve(+Same, -Moves) is nondet
 %
@@ -50,10 +51,9 @@ main(File) :-
 solve([], []).
 solve(Same, [M|Moves]) :-
     group(Same, Group),
-    writeln(Group).
-    %remove_group(Same, Group, NewSame),
-    %[M|_] = Group,
-    %solve(NewSame, Moves).
+    remove_group(Same, Group, NewSame),
+    [M|_] = Group,
+    solve(NewSame, Moves).
 
 %% group(+Same, ?Group) is nondet
 %
@@ -66,12 +66,12 @@ solve(Same, [M|Moves]) :-
 group(Same, Group) :-
     length(Same, ColSize), get_same_lin_size(Same, 0, LinSize),
     get_all_pos(Same, 0, 0, ColSize, LinSize, [], ListPos),
-    make_groups(Same, ListPos, [], NewGroup, Group).
+    make_groups(Same, ListPos, [], _, Group).
 
 get_all_pos(Same, Col, Lin, ColSize, LinSize, TempList, ListPos) :-
     Lin < LinSize, append(TempList, [pos(Lin, Col)], NewListPos), 
     NewLin is Lin + 1, 
-    get_all_pos(Same, Col, NewLin, ColSize, LinSize, NewListPos, ListPos).
+    get_all_pos(Same, Col, NewLin, ColSize, LinSize, NewListPos, ListPos), !.
 
 get_all_pos(Same, Col, Lin, ColSize, Lin, TempList, ListPos) :-
     NewCol is Col + 1, NewCol < ColSize,
@@ -80,18 +80,18 @@ get_all_pos(Same, Col, Lin, ColSize, Lin, TempList, ListPos) :-
 
 get_all_pos(_, _, _, _, _, TempList, TempList).
 
-make_groups(_, _, TempGroup, NewGroup, Group) :-
+make_groups(_, _, _, NewGroup, Group) :-
     nonvar(NewGroup),
     Group = NewGroup.
 
-make_groups(Same, [P | Tail], TempGroups, NewGroup, Group) :-
+make_groups(Same, [P | Tail], TempGroups, _, Group) :-
     group(Same, P, NewTempGroup),
-    not_member_group(TempGroups, NewGroup),
-    append(TempGroups, [NewGroup], NewTempGroups),
+    not_member_group(TempGroups, NewTempGroup),
+    append(TempGroups, [NewTempGroup], NewTempGroups),
     make_groups(Same, Tail, NewTempGroups, NewTempGroup, Group).
 
-make_groups(Same, [_ | Tail], TempGroups, NewGroup, Group) :-
-    make_groups(Same, Tail, TempGroups, NewGroup, Group).
+make_groups(Same, [_ | Tail], TempGroups, _, Group) :-
+    make_groups(Same, Tail, TempGroups, _, Group).
 
 make_groups(_, [], _, _, _) :- fail.
 
@@ -148,4 +148,41 @@ get_same_lin_size(Same, Col, LinSize) :-
 %    - crie um predicado auxiliar remove_column_group, que remove os elementos
 %    de uma coluna específica
 remove_group(Same, Group, NewSame) :-
-    writeln([Same, Group, NewSame]), fail.
+    make_new_same(Same, Group, 0, NewSame).
+
+make_new_same(Same, Group, Col, [NewCol | RestCol]) :-
+    length(Same, LengthSame),
+    Col < LengthSame,
+    findall(X, member(pos(X, Col), Group), ListLin),
+    ListLin \= [],
+    nth0(Col, Same, Column),
+    remove_column_group(ListLin, Column, Column, NewColumn),
+    NewColumn \= [],
+    [NewCol | _] = [NewColumn],
+    IncCol is Col + 1,
+    make_new_same(Same, Group, IncCol, RestCol), !.
+
+make_new_same(Same, Group, Col, [NewCol | RestCol]) :-
+    length(Same, LengthSame),
+    Col < LengthSame,
+    findall(X, member(pos(X, Col), Group), ListLin),
+    ListLin = [],
+    nth0(Col, Same, Column),
+    [NewCol | _] = [Column],
+    IncCol is Col + 1,
+    make_new_same(Same, Group, IncCol, RestCol), !.
+
+make_new_same(Same, _, Col, []) :-
+    length(Same, X),
+    X =:= Col, !.
+
+make_new_same(Same, Group, Col, NewSame) :-
+    IncCol is Col + 1,
+    make_new_same(Same, Group, IncCol, NewSame).
+
+remove_column_group([], _, Column, Column).
+
+remove_column_group([Lin | Tail], SameColumn, Column, FinalColumn) :-
+    nth0(Lin, SameColumn, Elem),
+    selectchk(Elem, Column, NewColumn),
+    remove_column_group(Tail, SameColumn, NewColumn, FinalColumn).
