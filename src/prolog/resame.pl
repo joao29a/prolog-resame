@@ -64,32 +64,60 @@ solve(Same, [M|Moves]) :-
 %  auxiliares.
 
 group(Same, Group) :-
-    get_same_size(Same, ColSize, LinSize),
-    group(Same, pos(1, 2), Group).
+    length(Same, ColSize), get_same_lin_size(Same, 0, LinSize),
+    get_all_pos(Same, 0, 0, ColSize, LinSize, [], ListPos),
+    make_groups(Same, ListPos, [], NewGroup, Group).
+
+get_all_pos(Same, Col, Lin, ColSize, LinSize, TempList, ListPos) :-
+    Lin < LinSize, append(TempList, [pos(Lin, Col)], NewListPos), 
+    NewLin is Lin + 1, 
+    get_all_pos(Same, Col, NewLin, ColSize, LinSize, NewListPos, ListPos).
+
+get_all_pos(Same, Col, Lin, ColSize, Lin, TempList, ListPos) :-
+    NewCol is Col + 1, NewCol < ColSize,
+    get_same_lin_size(Same, NewCol, LinSize),
+    get_all_pos(Same, NewCol, 0, ColSize, LinSize, TempList, ListPos).
+
+get_all_pos(_, _, _, _, _, TempList, TempList).
+
+make_groups(_, _, TempGroup, NewGroup, Group) :-
+    nonvar(NewGroup),
+    Group = NewGroup.
+
+make_groups(Same, [P | Tail], TempGroups, NewGroup, Group) :-
+    group(Same, P, NewTempGroup),
+    not_member_group(TempGroups, NewGroup),
+    append(TempGroups, [NewGroup], NewTempGroups),
+    make_groups(Same, Tail, NewTempGroups, NewTempGroup, Group).
+
+make_groups(Same, [_ | Tail], TempGroups, NewGroup, Group) :-
+    make_groups(Same, Tail, TempGroups, NewGroup, Group).
+
+make_groups(_, [], _, _, _) :- fail.
+
+not_member_group([Group | Tail], NewGroup) :-
+    [P | _] = NewGroup,
+    not(member(P, Group)),
+    not_member_group(Tail, NewGroup).
+
+not_member_group([], _).
 
 %% grupo(+Same, +P, -Group) is semidet
 %
 %  Verdadeiro se Group é um grupo de Same que contém a posição P.
 
 group(Same, P, Group) :-
-    get_color(Same, P, Color),
-    Candidates = [P],
+    get_color(Same, P, Color), Candidates = [P],
     create_group(Candidates, Same, Color, [], Group).
 
 get_color(Same, P, Color) :-
-    pos(Lin, Col) = P,
-    nth0(Col, Same, X),
-    nth0(Lin, X, Color).
+    pos(Lin, Col) = P, nth0(Col, Same, X), nth0(Lin, X, Color).
 
 create_group([], _, _, TempGroup, Group) :-
-    length(TempGroup, X),
-    X > 1, 
-    Group = TempGroup.
+    length(TempGroup, X), X > 1, Group = TempGroup.
 
 create_group([P | Tail], Same, Color, TempGroup, Group) :-
-    is_valid(Same, P),
-    same_color(Same, P, Color),
-    not(member(P, TempGroup)),
+    is_valid(Same, P), same_color(Same, P, Color), not(member(P, TempGroup)),
     append(TempGroup, [P], NewGroup),
     get_neighbors(P, Neighbors),
     append(Tail, Neighbors, Candidates),
@@ -97,30 +125,20 @@ create_group([P | Tail], Same, Color, TempGroup, Group) :-
     create_group(Tail, Same, Color, TempGroup, Group).
 
 get_neighbors(P, Neighbors) :-
-    pos(Lin, Col) = P,
-    NewLinPlus is Lin + 1,
-    NewColPlus is Col + 1,
-    NewLinMinus is Lin - 1,
-    NewColMinus is Col - 1,
+    pos(Lin, Col) = P, NewLinPlus is Lin + 1, NewColPlus is Col + 1,
+    NewLinMinus is Lin - 1, NewColMinus is Col - 1,
     Neighbors = [pos(NewLinPlus, Col), pos(Lin, NewColPlus),
         pos(NewLinMinus, Col), pos(Lin, NewColMinus)].
 
 same_color(Same, P, Color) :-
-    get_color(Same, P, NewColor),
-    NewColor =:= Color.
+    get_color(Same, P, NewColor), NewColor =:= Color.
 
 is_valid(Same, P) :-
-    pos(Lin, Col) = P,
-    get_same_size(Same, ColSize, LineSize),
-    Col >= 0,
-    Col < ColSize,
-    Lin >= 0,
-    Lin < LineSize.
+    pos(Lin, Col) = P, length(Same, ColSize), Col >= 0, Col < ColSize,
+    get_same_lin_size(Same, Col, LineSize), Lin >= 0, Lin < LineSize.
 
-get_same_size(Same, ColSize, LinSize) :-
-    [Lines | _] = Same,
-    length(Lines, LinSize),
-    length(Same, ColSize).
+get_same_lin_size(Same, Col, LinSize) :-
+    nth0(Col, Same, Line), length(Line, LinSize).
 
 %% remove_group(+Same, +Group, -NewSame) is semidet
 %
