@@ -39,27 +39,37 @@ main(File) :-
     read_matrix_file(File, M),
     transpose(M, Same),
     solve(Same, Moves),
-    get_lin_col_size(Same, Col, Lin), 
-    print_solution(Moves, Same, Col, Lin), !.
+    get_col_lin_size(Same, ColSize, LinSize), 
+    print_solution(Moves, Same, ColSize, LinSize), !.
 
-get_lin_col_size(Same, Col, Lin) :-
-    length(Same, Col),
+%% get_col_lin_size(+Same, -ColSize, -LinSize) is det
+%
+% Verdadeiro se ColSize e LinSize é o tamanho das colunas e linhas do jogo 
+% inicial Same
+get_col_lin_size(Same, ColSize, LinSize) :-
+    length(Same, ColSize),
     [Line | _] = Same,
-    length(Line, Lin).
+    length(Line, LinSize).
 
+%% print_solution(+Moves, +Same, +ColSize, +LinSize) is semidet
+%
+% Verdadeiro se todas as jogadas foram impressas
 print_solution([], _, _, _).
 
-print_solution([M|Tail], Same, Col, Lin) :-
+print_solution([M|Tail], Same, ColSize, LinSize) :-
     group(Same, M, Group),
     remove_group(Same, Group, NewSame),
     length(NewSame, X),
-    Total is Col - X,
-    buildList(Total, Lin, EmptyLine),
-    append(NewSame, EmptyLine, RenewSame),
-    check_lines(RenewSame, Lin, ResultSame),
+    check_columns(NewSame, LinSize, RenewSame),
+    Total is ColSize - X,
+    build_list(Total, LinSize, EmptyColumn),
+    append(RenewSame, EmptyColumn, ResultSame),
     print_move(M, ResultSame),
-    print_solution(Tail, NewSame, Col, Lin).
+    print_solution(Tail, NewSame, ColSize, LinSize).
 
+%% print_move(+P, +Same) is det
+%
+% Verdadeiro se um movimento foi impresso
 print_move(pos(X, Y), Same) :-
     write(X), put_char(' '),
     write(Y), writeln('\n'),
@@ -67,45 +77,42 @@ print_move(pos(X, Y), Same) :-
     write_matrix(NewSame),
     write('\n').
 
-check_lines([Line | Rest], Lin, [NewLine | RestLine]) :-
-    length(Line, X),
-    Total is Lin - X,
-    addZeros(Total, ZeroLine),
-    append(Line, ZeroLine, NewLine),
-    check_lines(Rest, Lin, RestLine).
-check_lines([],_,[]).
+%% check_columns(+RenewSame, +LinSize, -NewSame) is semidet
+%
+% Verdadeiro se um novo same for criado com os zeros adicionados.
+check_columns([Column | Rest], LineSize, [NewColumn | RestColumn]) :-
+    length(Column, X), Total is LineSize - X,
+    add_zeros(Total, ZeroList),
+    append(Column, ZeroList, NewColumn),
+    check_columns(Rest, LineSize, RestColumn).
 
-addZeros(Total, [P|Rest]) :-
-    Total > 0,
-    P = 0,
+check_columns([],_,[]).
+
+%% add_zeros(+Ttoal, -ZeroList) is semidet
+%
+% Verdadeiro se em uma posição removida for adicionado zero.
+add_zeros(Total, [P|Rest]) :-
+    Total > 0, P = 0,
     NewTotal is Total - 1,
-    addZeros(NewTotal, Rest).
+    add_zeros(NewTotal, Rest).
 
-addZeros(0, []).
+add_zeros(0, []).
 
-buildList(Total, Lin, [S|T]) :-
-    Total > 0,
-    emptyLine(Lin, List),
-    S = List,
-    NewTotal is Total - 1,
-    buildList(NewTotal, Lin, T).
+%% build_list(+Total, +LinSize, -NewList) is det
+%
+% Verdadeiro se um lista com zeros for criada.
+build_list(Total, LinSize, [S|T]) :-
+    Total > 0, add_zeros(LinSize, List),
+    S = List, NewTotal is Total - 1,
+    build_list(NewTotal, LinSize, T).
 
-buildList(0, _, []).
-
-emptyLine(Lin, [S|T]) :-
-    Lin > 0,
-    S = 0,
-    DecLin is Lin - 1,
-    emptyLine(DecLin, T).
-
-emptyLine(0, []).
+build_list(0, _, []).
 
 %% solve(+Same, -Moves) is nondet
 %
 %  Verdadeiro se Moves é uma sequência de jogadas (lista de posições) que
 %  quando realizadas ("clicadas") resolvem o jogo Same.
 %  Este predicado não tem teste de unidade. Ele é testado pelo testador.
-
 
 solve([], []).
 solve(Same, [M|Moves]) :-
@@ -127,6 +134,9 @@ group(Same, Group) :-
     get_all_pos(Same, 0, 0, ColSize, LinSize, ListPos),
     make_groups(Same, ListPos, [], _, Group).
 
+%% get_all_pos(+Same, +Col, +Lin, +ColSize, +LinSize, -ListPos) is det
+%
+% Verdadeiro se todas as posição do jogo same forem criadas.
 get_all_pos(Same, Col, Lin, ColSize, LinSize, [P | RestP]) :-
     Lin < LinSize, P = pos(Lin, Col), 
     NewLin is Lin + 1, 
@@ -139,9 +149,12 @@ get_all_pos(Same, Col, Lin, ColSize, Lin, ListPos) :-
 
 get_all_pos(_, _, _, _, _, []).
 
+%% make_groups(+Same, +ListPos, +TempGroups, -NewGroup, - Group) is nondet
+%
+% Verdadeiro se um Grupo para uma posição for criado. Não há repetição
+% de Grupos.
 make_groups(_, _, _, NewGroup, Group) :-
-    nonvar(NewGroup),
-    Group = NewGroup.
+    nonvar(NewGroup), Group = NewGroup.
 
 make_groups(Same, [P | Tail], TempGroups, _, Group) :-
     group(Same, P, NewTempGroup),
@@ -154,9 +167,11 @@ make_groups(Same, [_ | Tail], TempGroups, _, Group) :-
 
 make_groups(_, [], _, _, _) :- fail.
 
+%% not_member_group(+TempGroups, +NewGroup) is semidet
+%
+% Verdadeiro se uma posição não pertencer a um Grupo já visitado.
 not_member_group([Group | Tail], NewGroup) :-
-    [P | _] = NewGroup,
-    not(member(P, Group)),
+    [P | _] = NewGroup, not(member(P, Group)),
     not_member_group(Tail, NewGroup).
 
 not_member_group([], _).
@@ -169,33 +184,50 @@ group(Same, P, Group) :-
     get_color(Same, P, Color), Candidates = [P],
     create_group(Candidates, Same, Color, [], Group).
 
+%% get_color(+Same, +P, -Color) is det
+%
+% Verdadeiro se encontrar a cor de um posição P.
 get_color(Same, P, Color) :-
     pos(Lin, Col) = P, nth0(Col, Same, X), nth0(Lin, X, Color).
 
+%% create_group(+Candidates, +Same, +Color, -NewGroup) is det
+%
+% Verdadeiro se um novo grupo for criado para uma posição P.
 create_group([], _, _, TempGroup, Group) :-
     length(TempGroup, X), X > 1, Group = TempGroup.
 
 create_group([P | Tail], Same, Color, TempGroup, Group) :-
     is_valid(Same, P), same_color(Same, P, Color), not(member(P, TempGroup)),
-    append(TempGroup, [P], NewGroup),
-    get_neighbors(P, Neighbors),
+    append(TempGroup, [P], NewTempGroup), get_neighbors(P, Neighbors),
     append(Tail, Neighbors, Candidates),
-    create_group(Candidates, Same, Color, NewGroup, Group), !;
+    create_group(Candidates, Same, Color, NewTempGroup, Group), !;
     create_group(Tail, Same, Color, TempGroup, Group).
 
+%% get_neighbors(+P, -Neighbors) is det
+%
+% Verdadeiro se os vizinhos de uma posição P for encontrada.
 get_neighbors(P, Neighbors) :-
     pos(Lin, Col) = P, NewLinPlus is Lin + 1, NewColPlus is Col + 1,
     NewLinMinus is Lin - 1, NewColMinus is Col - 1,
     Neighbors = [pos(NewLinPlus, Col), pos(Lin, NewColPlus),
         pos(NewLinMinus, Col), pos(Lin, NewColMinus)].
 
+%% same_color(+Same, +P, +Color) is semidet
+%
+% Verdadeiro se a cor de uma posição é igual a posição P "clicada".
 same_color(Same, P, Color) :-
     get_color(Same, P, NewColor), NewColor =:= Color.
 
+%% is_valid(+Same, +P) is semidet
+%
+% Verdadeiro se a posição P está dentro dos limites de tamanho do jogo.
 is_valid(Same, P) :-
     pos(Lin, Col) = P, length(Same, ColSize), Col >= 0, Col < ColSize,
     get_same_lin_size(Same, Col, LineSize), Lin >= 0, Lin < LineSize.
 
+% get_same_lin_size(+Same, +Col, -LinSize) is det
+%
+% Verdadeiro se o tamanho da linha de um coluna especifica for encontrada.
 get_same_lin_size(Same, Col, LinSize) :-
     nth0(Col, Same, Line), length(Line, LinSize).
 
@@ -209,12 +241,13 @@ get_same_lin_size(Same, Col, LinSize) :-
 remove_group(Same, Group, NewSame) :-
     remove_column_group(Same, Group, [], NewSame, pos(0,0)), !.
 
+%% remove_column_group(+Same, +Group, -NewColumn, -NewSame, -P) is semidet
+%
+% Verdadeiro se um novo same for criado com os elementos removidos.
 remove_column_group(Same, Group, NewColumn, NewSame, pos(Lin,Col)) :-
-    not(member(pos(Lin,Col), Group)),
-    nth0(Col, Same, Line),
+    not(member(pos(Lin,Col), Group)), nth0(Col, Same, Line), 
     nth0(Lin, Line, Elem),
-    append(NewColumn, [Elem], NewElemColumn),
-    NewLin is Lin + 1,
+    append(NewColumn, [Elem], NewElemColumn), NewLin is Lin + 1,
     remove_column_group(Same, Group, NewElemColumn, NewSame, 
                                 pos(NewLin, Col)).
 
@@ -226,16 +259,12 @@ remove_column_group(Same, Group, NewColumn, NewSame, pos(Lin,Col)) :-
     remove_column_group(Same, Group, NewColumn, NewSame, pos(NewLin,Col)).
 
 remove_column_group(Same, Group, [], NewSame, pos(_,Col)) :-
-    length(Same, X),
-    Col < X,
-    NewCol is Col + 1,
+    length(Same, X), Col < X, NewCol is Col + 1,
     remove_column_group(Same, Group, [], NewSame, pos(0, NewCol)).
 
 remove_column_group(Same, Group, NewColumn, [NewColumn | RestColumn], 
                             pos(_,Col)) :-
-    length(Same, X),
-    Col < X,
-    NewCol is Col + 1,
+    length(Same, X), Col < X, NewCol is Col + 1,
     remove_column_group(Same, Group, [], RestColumn, pos(0, NewCol)).
 
 remove_column_group(_, _, _, [], _).
