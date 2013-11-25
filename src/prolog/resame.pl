@@ -40,49 +40,39 @@ main(File) :-
     transpose(M, Same),
     solve(Same, Moves),
     get_lin_col_size(Same, Col, Lin), 
-    print(Moves, Same, Col, Lin), !.
+    print_solution(Moves, Same, Col, Lin), !.
 
 get_lin_col_size(Same, Col, Lin) :-
     length(Same, Col),
     [Line | _] = Same,
     length(Line, Lin).
 
-print([], _, _, _).
+print_solution([], _, _, _).
 
-print([M|Tail], Same, Col, Lin) :-
+print_solution([M|Tail], Same, Col, Lin) :-
     group(Same, M, Group),
     remove_group(Same, Group, NewSame),
     length(NewSame, X),
-    X < Col,
     Total is Col - X,
     buildList(Total, Lin, EmptyLine),
     append(NewSame, EmptyLine, RenewSame),
     check_lines(RenewSame, Lin, ResultSame),
-    echo_output(M, ResultSame),
-    print(Tail, NewSame, Col, Lin), !.
+    print_move(M, ResultSame),
+    print_solution(Tail, NewSame, Col, Lin).
 
-print([M|Tail], Same, Col, Lin) :-
-    group(Same, M, Group),
-    remove_group(Same, Group, NewSame),
-    length(NewSame, X),
-    X =:= Col,
-    check_lines(NewSame, Lin, RenewSame),
-    echo_output(M, RenewSame),
-    print(Tail, NewSame, Col, Lin).
-
-echo_output(pos(X, Y), Same) :-
+print_move(pos(X, Y), Same) :-
     write(X), put_char(' '),
     write(Y), writeln('\n'),
     transpose(Same, NewSame),
     write_matrix(NewSame),
     write('\n').
 
-check_lines([Line | Rest], Lin, [NewLine | Rest3]) :-
+check_lines([Line | Rest], Lin, [NewLine | RestLine]) :-
     length(Line, X),
     Total is Lin - X,
     addZeros(Total, ZeroLine),
     append(Line, ZeroLine, NewLine),
-    check_lines(Rest, Lin, Rest3).
+    check_lines(Rest, Lin, RestLine).
 check_lines([],_,[]).
 
 addZeros(Total, [P|Rest]) :-
@@ -134,20 +124,20 @@ solve(Same, [M|Moves]) :-
 
 group(Same, Group) :-
     length(Same, ColSize), get_same_lin_size(Same, 0, LinSize),
-    get_all_pos(Same, 0, 0, ColSize, LinSize, [], ListPos),
+    get_all_pos(Same, 0, 0, ColSize, LinSize, ListPos),
     make_groups(Same, ListPos, [], _, Group).
 
-get_all_pos(Same, Col, Lin, ColSize, LinSize, TempList, ListPos) :-
-    Lin < LinSize, append(TempList, [pos(Lin, Col)], NewListPos), 
+get_all_pos(Same, Col, Lin, ColSize, LinSize, [P | RestP]) :-
+    Lin < LinSize, P = pos(Lin, Col), 
     NewLin is Lin + 1, 
-    get_all_pos(Same, Col, NewLin, ColSize, LinSize, NewListPos, ListPos), !.
+    get_all_pos(Same, Col, NewLin, ColSize, LinSize, RestP), !.
 
-get_all_pos(Same, Col, Lin, ColSize, Lin, TempList, ListPos) :-
+get_all_pos(Same, Col, Lin, ColSize, Lin, ListPos) :-
     NewCol is Col + 1, NewCol < ColSize,
     get_same_lin_size(Same, NewCol, LinSize),
-    get_all_pos(Same, NewCol, 0, ColSize, LinSize, TempList, ListPos).
+    get_all_pos(Same, NewCol, 0, ColSize, LinSize, ListPos).
 
-get_all_pos(_, _, _, _, _, TempList, TempList).
+get_all_pos(_, _, _, _, _, []).
 
 make_groups(_, _, _, NewGroup, Group) :-
     nonvar(NewGroup),
@@ -156,7 +146,7 @@ make_groups(_, _, _, NewGroup, Group) :-
 make_groups(Same, [P | Tail], TempGroups, _, Group) :-
     group(Same, P, NewTempGroup),
     not_member_group(TempGroups, NewTempGroup),
-    append(TempGroups, [NewTempGroup], NewTempGroups),
+    append(TempGroups, [NewTempGroup], NewTempGroups), !,
     make_groups(Same, Tail, NewTempGroups, NewTempGroup, Group).
 
 make_groups(Same, [_ | Tail], TempGroups, _, Group) :-

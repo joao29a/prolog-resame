@@ -1,0 +1,17 @@
+src/prolog/run testes/pequenos/com-solucao/3-3-3 OK
+src/prolog/run testes/pequenos/com-solucao/3-3-4 OK
+src/prolog/run testes/pequenos/com-solucao/3-4-3 OK
+src/prolog/run testes/pequenos/com-solucao/3-4-4 OK
+src/prolog/run testes/pequenos/com-solucao/4-3-3 OK
+src/prolog/run testes/pequenos/com-solucao/4-3-4 OK
+src/prolog/run testes/pequenos/com-solucao/4-4-3 OK
+src/prolog/run testes/pequenos/com-solucao/4-4-4 OK
+src/prolog/run testes/pequenos/sem-solucao/3-3-3 OK
+src/prolog/run testes/pequenos/sem-solucao/3-3-4 OK
+src/prolog/run testes/pequenos/sem-solucao/3-4-3 OK
+src/prolog/run testes/pequenos/sem-solucao/3-4-4 OK
+src/prolog/run testes/pequenos/sem-solucao/4-3-3 OK
+src/prolog/run testes/pequenos/sem-solucao/4-3-4 OK
+src/prolog/run testes/pequenos/sem-solucao/4-4-3 OK
+src/prolog/run testes/pequenos/sem-solucao/4-4-4 OK
+16/16 acertos (0.36)
